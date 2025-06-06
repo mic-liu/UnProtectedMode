@@ -1,7 +1,6 @@
 package com.example;
 
 import java.io.*;
-import java.nio.charset.Charset;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -9,27 +8,58 @@ import java.util.zip.ZipOutputStream;
 
 public class XlsmProcessor {
     public static void main(String[] args) {
-        if (args.length != 1) {
-            System.out.println("请将Excel文件拖拽到本程序上！");
+        if (args.length == 0) {
+            System.out.println("请将Excel文件或文件夹拖拽到本程序上！");
             return;
         }
 
-        String inputFile = args[0].toLowerCase();
-        if (!inputFile.endsWith(".xlsm") && !inputFile.endsWith(".xlsx") && !inputFile.endsWith(".xls")) {
-            System.out.println("请拖拽Excel文件（.xlsm、.xlsx或.xls）！");
+        // 处理每个拖拽的文件或文件夹
+        for (String path : args) {
+            processPath(new File(path));
+        }
+
+        System.out.println("所有文件处理完成！");
+    }
+
+    private static void processPath(File path) {
+        if (path.isDirectory()) {
+            // 处理文件夹
+            System.out.println("正在处理文件夹：" + path.getAbsolutePath());
+            File[] files = path.listFiles();
+            if (files != null) {
+                for (File file : files) {
+                    processPath(file);
+                }
+            }
+        } else {
+            // 处理单个文件
+            processFile(path.getAbsolutePath());
+        }
+    }
+
+    private static void processFile(String inputFile) {
+        String lowerInputFile = inputFile.toLowerCase();
+        if (!lowerInputFile.endsWith(".xlsm") && 
+            !lowerInputFile.endsWith(".xlsx") && 
+            !lowerInputFile.endsWith(".xls")) {
+            // 跳过非Excel文件，不输出提示以减少干扰
             return;
         }
 
-        // 构造输出文件名
-        String outputFile = args[0].substring(0, args[0].lastIndexOf(".")) + "_unprotected" + args[0].substring(args[0].lastIndexOf("."));
+        // 在同一目录下创建输出文件
+        String outputFile = inputFile.substring(0, inputFile.lastIndexOf(".")) + 
+                           "_unprotected" + 
+                           inputFile.substring(inputFile.lastIndexOf("."));
 
         try {
-            // 创建临时目录
-            File tempDir = new File("temp");
+            // 为每个文件创建唯一的临时目录
+            File tempDir = new File("temp_" + System.currentTimeMillis());
             tempDir.mkdir();
 
+            System.out.println("正在处理：" + inputFile);
+
             // 解压Excel文件
-            unzipFile(args[0], tempDir.getPath());
+            unzipFile(inputFile, tempDir.getPath());
 
             // 处理所有XML文件
             processXmlFiles(tempDir);
@@ -42,8 +72,8 @@ public class XlsmProcessor {
 
             System.out.println("处理完成！输出文件：" + outputFile);
         } catch (Exception e) {
+            System.out.println("处理失败：" + inputFile);
             e.printStackTrace();
-            System.out.println("处理失败！");
         }
     }
 
