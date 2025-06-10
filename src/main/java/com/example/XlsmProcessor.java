@@ -18,10 +18,12 @@ public class XlsmProcessor {
             return;
         }
 
-        System.out.println("\n\n");
+        System.out.println("\n");
+        System.out.println("************************************************");
         System.out.println("ToolName：CCUSExcelDoc保護モード解除ツール");
         System.out.println("  Author：Mic.Liu");
-        System.out.println(" Version：V1.0.1");
+        System.out.println(" Version：v1.0.1");
+        System.out.println("************************************************");
         // ユーザーに処理方法を確認
         askProcessingOption();
 
@@ -43,9 +45,11 @@ public class XlsmProcessor {
         Scanner scanner = new Scanner(System.in);
         while (true) {
             System.out.println("ファイルの処理方法を選択してください：");
+            System.out.println("--------------------------------------------------------");
             System.out.println("0. 処理を終了");
             System.out.println("1. 新しいファイルを生成（ファイル名に_unprotectedを付加）");
             System.out.println("2. 元のファイルを直接上書き");
+            System.out.println("--------------------------------------------------------");
             System.out.print("オプションを入力してください（0、1または2）：");
 
             String input = scanner.nextLine().trim();
