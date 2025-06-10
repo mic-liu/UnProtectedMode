@@ -1,30 +1,74 @@
 package com.example;
 
 import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.file.*;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
+import java.util.Scanner;
 
 public class XlsmProcessor {
+    private static boolean overwriteOriginal = false;
+
     public static void main(String[] args) {
         if (args.length == 0) {
-            System.out.println("请将Excel文件或文件夹拖拽到本程序上！");
+            System.out.println("Excelファイルまたはフォルダをこのプログラムにドラッグ＆ドロップしてください！");
             return;
         }
 
-        // 处理每个拖拽的文件或文件夹
+        System.out.println("\n\n");
+        System.out.println("ToolName：CCUSExcelDoc保護モード解除ツール");
+        System.out.println("  Author：Mic.Liu");
+        System.out.println(" Version：V1.0.1");
+        // ユーザーに処理方法を確認
+        askProcessingOption();
+
+        // ドラッグ＆ドロップされた各ファイルまたはフォルダを処理
         for (String path : args) {
             processPath(new File(path));
         }
 
-        System.out.println("所有文件处理完成！");
+        System.out.println("すべてのファイルの処理が完了しました！");
+        System.out.println("任意のキーを押して終了...");
+        try {
+            System.in.read();
+        } catch (IOException e) {
+            // 例外を無視
+        }
+    }
+
+    private static void askProcessingOption() {
+        Scanner scanner = new Scanner(System.in);
+        while (true) {
+            System.out.println("ファイルの処理方法を選択してください：");
+            System.out.println("0. 処理を終了");
+            System.out.println("1. 新しいファイルを生成（ファイル名に_unprotectedを付加）");
+            System.out.println("2. 元のファイルを直接上書き");
+            System.out.print("オプションを入力してください（0、1または2）：");
+
+            String input = scanner.nextLine().trim();
+            if (input.equals("0")) {
+                System.out.println("処理を終了します。");
+                System.exit(0); 
+            } else if (input.equals("1")) {
+                overwriteOriginal = false;
+                break;
+            } else if (input.equals("2")) {
+                overwriteOriginal = true;
+                break;
+            } else {
+                System.out.println("\n無効なオプションです。もう一度選択してください。\n");
+            }
+        }
+        System.out.println(); // 空行を印刷
     }
 
     private static void processPath(File path) {
         if (path.isDirectory()) {
-            // 处理文件夹
-            System.out.println("正在处理文件夹：" + path.getAbsolutePath());
+            // フォルダを処理
+            System.out.println("フォルダを処理中：" + path.getAbsolutePath());
             File[] files = path.listFiles();
             if (files != null) {
                 for (File file : files) {
@@ -32,7 +76,7 @@ public class XlsmProcessor {
                 }
             }
         } else {
-            // 处理单个文件
+            // 単一ファイルを処理
             processFile(path.getAbsolutePath());
         }
     }
@@ -42,37 +86,62 @@ public class XlsmProcessor {
         if (!lowerInputFile.endsWith(".xlsm") && 
             !lowerInputFile.endsWith(".xlsx") && 
             !lowerInputFile.endsWith(".xls")) {
-            // 跳过非Excel文件，不输出提示以减少干扰
             return;
         }
 
-        // 在同一目录下创建输出文件
-        String outputFile = inputFile.substring(0, inputFile.lastIndexOf(".")) + 
-                           "_unprotected" + 
-                           inputFile.substring(inputFile.lastIndexOf("."));
+        // ユーザーの選択に基づいて出力ファイルパスを決定
+        String outputFile;
+        if (overwriteOriginal) {
+            outputFile = inputFile;
+        } else {
+            outputFile = inputFile.substring(0, inputFile.lastIndexOf(".")) + 
+                         "_unprotected" + 
+                         inputFile.substring(inputFile.lastIndexOf("."));
+        }
 
         try {
-            // 为每个文件创建唯一的临时目录
+            // 各ファイルに一意の一時ディレクトリを作成
             File tempDir = new File("temp_" + System.currentTimeMillis());
             tempDir.mkdir();
 
-            System.out.println("正在处理：" + inputFile);
+            System.out.println("処理中：" + inputFile);
 
-            // 解压Excel文件
+            // 上書きモードの場合、バックアップを作成
+            if (overwriteOriginal) {
+                String backupFile = inputFile + ".bak";
+                Files.copy(Paths.get(inputFile), Paths.get(backupFile), StandardCopyOption.REPLACE_EXISTING);
+            }
+
+            // Excelファイルを解凍
             unzipFile(inputFile, tempDir.getPath());
 
-            // 处理所有XML文件
+            // すべてのXMLファイルを処理
             processXmlFiles(tempDir);
 
-            // 重新打包
+            // 再パッケージ化
             zipDirectory(tempDir, outputFile);
 
-            // 清理临时文件
+            // 一時ファイルをクリーンアップ
             deleteDirectory(tempDir);
 
-            System.out.println("处理完成！输出文件：" + outputFile);
+            // 上書きモードの場合、処理成功後にバックアップを削除
+            if (overwriteOriginal) {
+                Files.delete(Paths.get(inputFile + ".bak"));
+            }
+
+            System.out.println("処理完了！" + (overwriteOriginal ? "元のファイルを上書きしました" : "出力ファイル：" + outputFile));
         } catch (Exception e) {
-            System.out.println("处理失败：" + inputFile);
+            System.out.println("処理失敗：" + inputFile);
+            // 上書きモードの場合、エラー発生時にバックアップを復元
+            if (overwriteOriginal) {
+                try {
+                    Files.move(Paths.get(inputFile + ".bak"), Paths.get(inputFile), 
+                              StandardCopyOption.REPLACE_EXISTING);
+                    System.out.println("元のファイルを復元しました");
+                } catch (IOException restoreError) {
+                    System.out.println("元のファイルの復元に失敗しました！バックアップファイル：" + inputFile + ".bak");
+                }
+            }
             e.printStackTrace();
         }
     }
