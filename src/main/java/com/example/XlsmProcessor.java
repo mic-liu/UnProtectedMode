@@ -23,7 +23,9 @@ public class XlsmProcessor {
         System.out.println("ToolName：CCUSExcelDoc保護モード解除ツール");
         System.out.println("  Author：Mic.Liu");
         System.out.println(" Version：v1.0.1");
+    
         System.out.println("************************************************");
+        System.out.println("【処理対象】.xlsm, .xlsx(.xls 形式の場合は、手動で .xlsx に保存してから処理することをお勧めします)");
         // ユーザーに処理方法を確認
         askProcessingOption();
 
@@ -88,8 +90,7 @@ public class XlsmProcessor {
     private static void processFile(String inputFile) {
         String lowerInputFile = inputFile.toLowerCase();
         if (!lowerInputFile.endsWith(".xlsm") && 
-            !lowerInputFile.endsWith(".xlsx") && 
-            !lowerInputFile.endsWith(".xls")) {
+            !lowerInputFile.endsWith(".xlsx")) {
             return;
         }
 
